@@ -30,7 +30,8 @@ class BaseAcceptanceMapCreator(ABC):
                  min_observation_per_cos_zenith_bin: int = 3,
                  initial_cos_zenith_binning: float = 0.01,
                  max_fraction_pixel_rotation_fov: float = 0.5,
-                 time_resolution_rotation_fov: u.Quantity = 0.1 * u.s) -> None:
+                 time_resolution_rotation_fov: u.Quantity = 0.1 * u.s,
+                 verbose: bool = False) -> None:
         """
         Create the class for calculating radial acceptance model.
 
@@ -52,6 +53,8 @@ class BaseAcceptanceMapCreator(ABC):
             For camera frame transformation the maximum size relative to a pixel a rotation is allowed
         time_resolution_rotation_fov : astropy.units.Quantity, optional
             Time resolution to use for the computation of the rotation of the FoV
+        verbose : bool, optional
+            If True, print the informations related to the cos zenith binning
         """
 
         # If no exclusion region, default it as an empty list
@@ -64,6 +67,7 @@ class BaseAcceptanceMapCreator(ABC):
         self.exclude_regions = exclude_regions
         self.min_observation_per_cos_zenith_bin = min_observation_per_cos_zenith_bin
         self.initial_cos_zenith_binning = initial_cos_zenith_binning
+        self.verbose = verbose
 
         # Calculate map parameter
         self.n_bins_map = 2 * int(np.rint((self.max_offset / spatial_resolution).to(u.dimensionless_unscaled)))
@@ -466,6 +470,10 @@ class BaseAcceptanceMapCreator(ABC):
                 livetime_per_obs.append(obs.observation_live_time_duration)
             bin_center.append(
                 np.sum([wcos.value for wcos in weighted_cos_zenith_bin_per_obs])/np.sum([livet.value for livet in livetime_per_obs]))
+        if self.verbose:
+            print("cos zenith bins: ",list(np.round(cos_zenith_bin,2)))
+            print("cos zenith bin centers: ",list(np.round(bin_center,2)))
+            print("runs per bin: ",list(np.round(run_per_bin,2)))
 
         acceptance_map = {}
         if len(binned_model) <= 1:
