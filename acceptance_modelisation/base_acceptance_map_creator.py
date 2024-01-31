@@ -28,6 +28,7 @@ class BaseAcceptanceMapCreator(ABC):
                  spatial_resolution: u.Quantity,
                  exclude_regions: Optional[List[SkyRegion]] = None,
                  min_observation_per_cos_zenith_bin: int = 3,
+                 min_livetime_per_cos_zenith_bin: u.Quantity = 3000. * u.s,
                  initial_cos_zenith_binning: float = 0.01,
                  max_fraction_pixel_rotation_fov: float = 0.5,
                  time_resolution_rotation_fov: u.Quantity = 0.1 * u.s,
@@ -47,6 +48,8 @@ class BaseAcceptanceMapCreator(ABC):
             Regions with known or putative gamma-ray emission, will be excluded from the calculation of the acceptance map
         min_observation_per_cos_zenith_bin : int, optional
             Minimum number of observations per zenith bins
+        min_livetime_per_cos_zenith_bin : astropy.units.Quantity, optional
+            Minimum livetime per zenith bins
         initial_cos_zenith_binning : float, optional
             Initial bin size for cos zenith binning
         max_fraction_pixel_rotation_fov : float, optional
@@ -66,6 +69,7 @@ class BaseAcceptanceMapCreator(ABC):
         self.max_offset = max_offset
         self.exclude_regions = exclude_regions
         self.min_observation_per_cos_zenith_bin = min_observation_per_cos_zenith_bin
+        self.min_livetime_per_cos_zenith_bin = min_livetime_per_cos_zenith_bin
         self.initial_cos_zenith_binning = initial_cos_zenith_binning
         self.verbose = verbose
 
