@@ -442,17 +442,32 @@ class BaseAcceptanceMapCreator(ABC):
 
         cos_zenith_bin = np.sort(np.arange(1.0, 0. - self.initial_cos_zenith_binning, -self.initial_cos_zenith_binning))
         cos_zenith_observations = [np.cos(obs.get_pointing_altaz(obs.tmid).zen) for obs in observations]
+        livetime_observations = [obs.observation_live_time_duration.value for obs in observations]
+        livetime_per_bin =  np.histogram(livetime_observations, bins=cos_zenith_bin)[0]
+        for obs in observations:
+            livetime_per_bin[np.digitize(np.cos(obs.get_pointing_altaz(obs.tmid).zen), cos_zenith_bin) - 1] += obs.observation_live_time_duration.value
+
         run_per_bin = np.histogram(cos_zenith_observations, bins=cos_zenith_bin)[0]
 
+        if self.min_livetime_per_cos_zenith_bin is not None: 
+            cut_variable="livetime"
+            min_cut_per_cos_zenith_bin = self.min_livetime_per_cos_zenith_bin.value
+            cut_variable_per_bin = livetime_per_bin
+        
+        else: 
+            cut_variable="observation"
+            min_cut_per_cos_zenith_bin = self.min_observation_per_cos_zenith_bin
+            cut_variable_per_bin = run_per_bin
+        
         i = 0
-        while i < len(run_per_bin):
-            if run_per_bin[i] < self.min_observation_per_cos_zenith_bin and (i + 1) < len(run_per_bin):
-                run_per_bin[i] += run_per_bin[i + 1]
-                run_per_bin = np.delete(run_per_bin, i + 1)
+        while i < len(cut_variable_per_bin):
+            if cut_variable_per_bin[i] < min_cut_per_cos_zenith_bin and (i + 1) < len(cut_variable_per_bin):
+                cut_variable_per_bin[i] += cut_variable_per_bin[i + 1]
+                cut_variable_per_bin = np.delete(cut_variable_per_bin, i + 1)
                 cos_zenith_bin = np.delete(cos_zenith_bin, i + 1)
-            elif run_per_bin[i] < self.min_observation_per_cos_zenith_bin and (i + 1) == len(run_per_bin) and i > 0:
-                run_per_bin[i - 1] += run_per_bin[i]
-                run_per_bin = np.delete(run_per_bin, i)
+            elif cut_variable_per_bin[i] < min_cut_per_cos_zenith_bin and (i + 1) == len(cut_variable_per_bin) and i > 0:
+                cut_variable_per_bin[i - 1] += cut_variable_per_bin[i]
+                cut_variable_per_bin = np.delete(cut_variable_per_bin, i)
                 cos_zenith_bin = np.delete(cos_zenith_bin, i)
                 i -= 1
             else:
@@ -477,7 +492,7 @@ class BaseAcceptanceMapCreator(ABC):
         if self.verbose:
             print("cos zenith bins: ",list(np.round(cos_zenith_bin,2)))
             print("cos zenith bin centers: ",list(np.round(bin_center,2)))
-            print("runs per bin: ",list(np.round(run_per_bin,2)))
+            print(f"{cut_variable} per bin: ",list(np.round(cut_variable_per_bin,2)))
 
         acceptance_map = {}
         if len(binned_model) <= 1:
