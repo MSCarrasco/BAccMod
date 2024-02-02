@@ -17,6 +17,7 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
                  offset_axis: MapAxis,
                  oversample_map: int = 10,
                  exclude_regions: Optional[List[SkyRegion]] = None,
+                 cos_zenith_binning_method = 'livetime',
                  min_observation_per_cos_zenith_bin: int = 15,
                  min_livetime_per_cos_zenith_bin: u.Quantity = 3000. * u.s,
                  initial_cos_zenith_binning: float = 0.01,
@@ -36,6 +37,10 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
             Oversample in number of pixel of the spatial axis used for the calculation
         exclude_regions : list of regions.SkyRegion, optional
             Region with known or putative gamma-ray emission, will be excluded of the calculation of the acceptance map
+        cos_zenith_binning_method : str, optional
+            Method to compute the cos zenith binning: "observation","livetime"
+            "observation" method use the minimum number of observation criteria
+            "livetime" method use the minimum amount of livetime criteria
         min_observation_per_cos_zenith_bin : int, optional
             Minimum number of runs per zenith bins
         min_livetime_per_cos_zenith_bin : astropy.units.Quantity, optional
@@ -67,7 +72,7 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
 
         # Initiate upper instance
         super().__init__(energy_axis, max_offset, spatial_resolution, exclude_regions,
-                         min_observation_per_cos_zenith_bin, min_livetime_per_cos_zenith_bin,
+                         cos_zenith_binning_method, min_observation_per_cos_zenith_bin, min_livetime_per_cos_zenith_bin,
                          initial_cos_zenith_binning, max_fraction_pixel_rotation_fov, time_resolution_rotation_fov,verbose)
 
     def create_acceptance_map(self, observations: Observations) -> Background3D:
