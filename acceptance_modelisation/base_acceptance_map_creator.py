@@ -27,6 +27,7 @@ class BaseAcceptanceMapCreator(ABC):
                  max_offset: u.Quantity,
                  spatial_resolution: u.Quantity,
                  exclude_regions: Optional[List[SkyRegion]] = None,
+                 cos_zenith_binning_method = 'livetime',
                  min_observation_per_cos_zenith_bin: int = 3,
                  min_livetime_per_cos_zenith_bin: u.Quantity = 3000. * u.s,
                  initial_cos_zenith_binning: float = 0.01,
@@ -46,6 +47,10 @@ class BaseAcceptanceMapCreator(ABC):
             The spatial resolution
         exclude_regions : list of regions.SkyRegion, optional
             Regions with known or putative gamma-ray emission, will be excluded from the calculation of the acceptance map
+        cos_zenith_binning_method : str, optional
+            Method to compute the cos zenith binning: "observation","livetime"
+            "observation" method use the minimum number of observation criteria
+            "livetime" method use the minimum amount of livetime criteria
         min_observation_per_cos_zenith_bin : int, optional
             Minimum number of observations per zenith bins
         min_livetime_per_cos_zenith_bin : astropy.units.Quantity, optional
@@ -68,6 +73,7 @@ class BaseAcceptanceMapCreator(ABC):
         self.energy_axis = energy_axis
         self.max_offset = max_offset
         self.exclude_regions = exclude_regions
+        self.cos_zenith_binning_method = cos_zenith_binning_method
         self.min_observation_per_cos_zenith_bin = min_observation_per_cos_zenith_bin
         self.min_livetime_per_cos_zenith_bin = min_livetime_per_cos_zenith_bin
         self.initial_cos_zenith_binning = initial_cos_zenith_binning
@@ -442,23 +448,17 @@ class BaseAcceptanceMapCreator(ABC):
 
         cos_zenith_bin = np.sort(np.arange(1.0, 0. - self.initial_cos_zenith_binning, -self.initial_cos_zenith_binning))
         cos_zenith_observations = [np.cos(obs.get_pointing_altaz(obs.tmid).zen) for obs in observations]
-        livetime_observations = [obs.observation_live_time_duration.value for obs in observations]
-        livetime_per_bin =  np.histogram(livetime_observations, bins=cos_zenith_bin)[0]
-        for obs in observations:
-            livetime_per_bin[np.digitize(np.cos(obs.get_pointing_altaz(obs.tmid).zen), cos_zenith_bin) - 1] += obs.observation_live_time_duration.value
-
-        run_per_bin = np.histogram(cos_zenith_observations, bins=cos_zenith_bin)[0]
-
-        if self.min_livetime_per_cos_zenith_bin is not None: 
-            cut_variable="livetime"
-            min_cut_per_cos_zenith_bin = self.min_livetime_per_cos_zenith_bin.value
-            cut_variable_per_bin = livetime_per_bin
         
-        else: 
-            cut_variable="observation"
+        if self.cos_zenith_binning_method == "livetime":
+            cut_variable_weights = [obs.observation_live_time_duration.value for obs in observations]
+            min_cut_per_cos_zenith_bin = self.min_livetime_per_cos_zenith_bin.to_value(u.s)
+        elif self.cos_zenith_binning_method == "observation":
+            cut_variable_weights = np.ones(len(cos_zenith_observations),dtype=int)
             min_cut_per_cos_zenith_bin = self.min_observation_per_cos_zenith_bin
-            cut_variable_per_bin = run_per_bin
+        else: raise ValueError(f"No {self.cos_zenith_binning_method} method available for the cos zenith binning")
         
+        cut_variable_per_bin =  np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=cut_variable_weights)[0]
+
         i = 0
         while i < len(cut_variable_per_bin):
             if cut_variable_per_bin[i] < min_cut_per_cos_zenith_bin and (i + 1) < len(cut_variable_per_bin):
@@ -492,7 +492,9 @@ class BaseAcceptanceMapCreator(ABC):
         if self.verbose:
             print("cos zenith bins: ",list(np.round(cos_zenith_bin,2)))
             print("cos zenith bin centers: ",list(np.round(bin_center,2)))
-            print(f"{cut_variable} per bin: ",list(np.round(cut_variable_per_bin,2)))
+            print(f"{self.cos_zenith_binning_method} per bin: ",list(np.round(cut_variable_per_bin,2)))
+            if self.cos_zenith_binning_method == "livetime": print(f"observation per bin: ", 
+                                                                   list(np.histogram(cos_zenith_observations, bins=cos_zenith_bin)[0]))
 
         acceptance_map = {}
         if len(binned_model) <= 1:
