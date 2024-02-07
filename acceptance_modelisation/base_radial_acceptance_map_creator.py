@@ -86,7 +86,6 @@ class BaseRadialAcceptanceMapCreator(BaseAcceptanceMapCreator):
         """
         count_map_background, exp_map_background, exp_map_background_total, livetime = self._create_base_computation_map(
             observations)
-
         data_background = np.zeros((self.energy_axis.nbin, self.offset_axis.nbin)) * u.Unit('s-1 MeV-1 sr-1')
         for i in range(self.offset_axis.nbin):
             if np.isclose(0. * u.deg, self.offset_axis.edges[i]):
