@@ -1,11 +1,12 @@
 from typing import List, Optional, Tuple
 
 import astropy.units as u
+import numpy as np
 from gammapy.data import Observation
 from gammapy.datasets import MapDataset
 from gammapy.maps import MapAxis, WcsNDMap, WcsGeom
 from regions import SkyRegion
-
+from scipy.stats import gamma
 from .base_radial_acceptance_map_creator import BaseRadialAcceptanceMapCreator
 
 
@@ -80,7 +81,7 @@ class RadialAcceptanceMapCreator(BaseRadialAcceptanceMapCreator):
         Returns
         -------
         count_map_background : gammapy.map.WcsNDMap
-            The count map
+            The count map corrected with empty bin filling method
         exp_map_background : gammapy.map.WcsNDMap
             The exposure map corrected for exclusion regions
         exp_map_background_total : gammapy.map.WcsNDMap
@@ -88,6 +89,7 @@ class RadialAcceptanceMapCreator(BaseRadialAcceptanceMapCreator):
         livetime : astropy.unit.Unit
             The total exposure time for the model
         """
+        count_map_background_observed = WcsNDMap(geom=self.geom)
         count_map_background = WcsNDMap(geom=self.geom)
         exp_map_background = WcsNDMap(geom=self.geom, unit=u.s)
         exp_map_background_total = WcsNDMap(geom=self.geom, unit=u.s)
@@ -107,10 +109,13 @@ class RadialAcceptanceMapCreator(BaseRadialAcceptanceMapCreator):
                 count_map_obs.counts.data[i, :, :] = count_map_obs.counts.data[i, :, :] * exclusion_mask
                 exp_map_obs.counts.data[i, :, :] = exp_map_obs.counts.data[i, :, :] * exclusion_mask
 
-            count_map_background.data += count_map_obs.counts.data
+            count_map_background_observed.data += count_map_obs.counts.data
             exp_map_background.data += exp_map_obs.counts.data
             exp_map_background_total.data += exp_map_obs_total.counts.data
             livetime += obs.observation_live_time_duration
+        count_map_background_dummies =[]
+        for i in range(100): count_map_background_dummies.append(gamma.rvs(a=count_map_background_observed.data+1))
+        count_map_background.data += np.average(np.array(count_map_background_dummies),axis=0)
 
         return count_map_background, exp_map_background, exp_map_background_total, livetime
 

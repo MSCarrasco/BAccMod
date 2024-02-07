@@ -16,6 +16,7 @@ from gammapy.maps import WcsNDMap, WcsGeom, Map, MapAxis
 from regions import CircleSkyRegion, SkyRegion
 from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import interp1d
+from scipy.stats import gamma
 
 from .toolbox import compute_rotation_speed_fov
 
@@ -325,7 +326,7 @@ class BaseAcceptanceMapCreator(ABC):
         Returns
         -------
         count_map_background : gammapy.map.WcsNDMap
-            The count map
+            The count map corrected with empty bin filling method
         exp_map_background : gammapy.map.WcsNDMap
             The exposure map corrected for exclusion regions
         exp_map_background_total : gammapy.map.WcsNDMap
@@ -333,11 +334,11 @@ class BaseAcceptanceMapCreator(ABC):
         livetime : astropy.unit.Unit
             The total exposure time for the model
         """
+        count_map_background_observed = WcsNDMap(geom=self.geom)
         count_map_background = WcsNDMap(geom=self.geom)
         exp_map_background = WcsNDMap(geom=self.geom, unit=u.s)
         exp_map_background_total = WcsNDMap(geom=self.geom, unit=u.s)
         livetime = 0. * u.s
-
         for obs in observations:
             time_interval = self._compute_time_intervals_based_on_fov_rotation(obs)
             for i in range(len(time_interval) - 1):
@@ -353,10 +354,13 @@ class BaseAcceptanceMapCreator(ABC):
                     count_map_obs.counts.data[j, :, :] = count_map_obs.counts.data[j, :, :] * exclusion_mask
                     exp_map_obs.counts.data[j, :, :] = exp_map_obs.counts.data[j, :, :] * exclusion_mask
 
-                count_map_background.data += count_map_obs.counts.data
+                count_map_background_observed.data += count_map_obs.counts.data
                 exp_map_background.data += exp_map_obs.counts.data
                 exp_map_background_total.data += exp_map_obs_total.counts.data
                 livetime += cut_obs.observation_live_time_duration
+        count_map_background_dummies =[]
+        for i in range(100): count_map_background_dummies.append(gamma.rvs(a=count_map_background_observed.data+1))
+        count_map_background.data += np.average(np.array(count_map_background_dummies),axis=0)
 
         return count_map_background, exp_map_background, exp_map_background_total, livetime
 
