@@ -452,7 +452,10 @@ class BaseAcceptanceMapCreator(ABC):
 
         cos_zenith_bin = np.sort(np.arange(1.0, 0. - self.initial_cos_zenith_binning, -self.initial_cos_zenith_binning))
         cos_zenith_observations = [np.cos(obs.get_pointing_altaz(obs.tmid).zen) for obs in observations]
-        
+        ra_observations = np.round([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations],0)
+        ra_list = np.unique(ra_observations)
+        wobble_observations = [1*(ra_observations==ra) for ra in ra_list]
+
         if self.cos_zenith_binning_method == "livetime":
             cut_variable_weights = [obs.observation_live_time_duration.value for obs in observations]
             min_cut_per_cos_zenith_bin = self.min_livetime_per_cos_zenith_bin.to_value(u.s)
@@ -465,7 +468,13 @@ class BaseAcceptanceMapCreator(ABC):
 
         i = 0
         while i < len(cut_variable_per_bin):
-            if cut_variable_per_bin[i] < min_cut_per_cos_zenith_bin and (i + 1) < len(cut_variable_per_bin):
+            wobble_per_bin = [np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=wobble_obs)[0] for wobble_obs in wobble_observations]
+            at_least_2_wobble_per_bin = np.prod(wobble_per_bin, axis=0)>0
+            if not at_least_2_wobble_per_bin[i] and (i + 1) < len(cut_variable_per_bin):
+                cut_variable_per_bin[i] += cut_variable_per_bin[i + 1]
+                cut_variable_per_bin = np.delete(cut_variable_per_bin, i + 1)
+                cos_zenith_bin = np.delete(cos_zenith_bin, i + 1)
+            elif cut_variable_per_bin[i] < min_cut_per_cos_zenith_bin and (i + 1) < len(cut_variable_per_bin):
                 cut_variable_per_bin[i] += cut_variable_per_bin[i + 1]
                 cut_variable_per_bin = np.delete(cut_variable_per_bin, i + 1)
                 cos_zenith_bin = np.delete(cos_zenith_bin, i + 1)
@@ -497,6 +506,7 @@ class BaseAcceptanceMapCreator(ABC):
             print("cos zenith bins: ",list(np.round(cos_zenith_bin,2)))
             print("cos zenith bin centers: ",list(np.round(bin_center,2)))
             print(f"{self.cos_zenith_binning_method} per bin: ",list(np.round(cut_variable_per_bin,2)))
+            print(f"Wobble per bin: {[np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=wobble_obs)[0] for wobble_obs in wobble_observations]}")
             if self.cos_zenith_binning_method == "livetime": print(f"observation per bin: ", 
                                                                    list(np.histogram(cos_zenith_observations, bins=cos_zenith_bin)[0]))
 
