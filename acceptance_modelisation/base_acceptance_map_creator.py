@@ -453,14 +453,13 @@ class BaseAcceptanceMapCreator(ABC):
         cos_zenith_bin = np.sort(np.arange(1.0, 0. - self.initial_cos_zenith_binning, -self.initial_cos_zenith_binning))
         cos_zenith_observations = [np.cos(obs.get_pointing_altaz(obs.tmid).zen) for obs in observations]
         
-        ra_observations = np.round([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in obs_collection],1)
-        dec_observations = np.round([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in obs_collection],1)
+        ra_observations = np.round([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations],1)
+        dec_observations = np.round([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in observations],1)
         radec_observations = np.column_stack((ra_observations, dec_observations))
 
         wobble_pointings = get_unique_wobble_pointings(observations)
         wobble_observations = [[1*(radec_obs in pointings) for radec_obs in radec_observations] for pointings in wobble_pointings]
-        print(wobble_observations)
-        
+
         if self.cos_zenith_binning_method == "livetime":
             cut_variable_weights = [obs.observation_live_time_duration.value for obs in observations]
             min_cut_per_cos_zenith_bin = self.min_livetime_per_cos_zenith_bin.to_value(u.s)
