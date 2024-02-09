@@ -33,6 +33,20 @@ def compute_rotation_speed_fov(time_evaluation: Time,
     return omega
 
 def get_unique_wobble_pointings(observations: Observations):
+    """
+    Compute the angular separation between pointings and return a list 
+    of detected wobbles with their associated similar pointings
+
+    Parameters
+    ----------
+    observations : gammapy.data.observations.Observations
+        The list of observations
+
+    Returns
+    -------
+    unique_wobble_list : list
+        A list of the wobbles detected and their associated similar pointings (angular separation < 0.02°)
+    """
     ra_observations = np.round([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations],1)
     dec_observations = np.round([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in observations],1)
     radec_observations = np.column_stack((ra_observations, dec_observations))
@@ -43,7 +57,7 @@ def get_unique_wobble_pointings(observations: Observations):
         pointing_angsep_list.append(np.round([angular_separation(radec_list[i][0]*u.deg, radec_list[i][1]*u.deg,
                                                                  ra*u.deg, dec*u.deg).to_value(u.deg) for ra,dec in radec_list],1))
 
-    is_same_wobble_arr = np.vstack(pointing_angsep_list) <=0.2
+    is_same_wobble_arr = np.vstack(pointing_angsep_list) <= 0.2
 
     wobble_list = [radec_list[np.where(is_same_wobble)] for is_same_wobble in is_same_wobble_arr]
     unique_wobble_list = []
