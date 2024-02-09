@@ -94,7 +94,6 @@ class RadialAcceptanceMapCreator(BaseRadialAcceptanceMapCreator):
         exp_map_background = WcsNDMap(geom=self.geom, unit=u.s)
         exp_map_background_total = WcsNDMap(geom=self.geom, unit=u.s)
         livetime = 0. * u.s
-
         for obs in observations:
             geom = WcsGeom.create(skydir=obs.pointing.fixed_icrs, npix=(self.n_bins_map, self.n_bins_map),
                                   binsz=self.spatial_bin_size, frame="icrs", axes=[self.energy_axis])
@@ -109,13 +108,14 @@ class RadialAcceptanceMapCreator(BaseRadialAcceptanceMapCreator):
                 count_map_obs.counts.data[i, :, :] = count_map_obs.counts.data[i, :, :] * exclusion_mask
                 exp_map_obs.counts.data[i, :, :] = exp_map_obs.counts.data[i, :, :] * exclusion_mask
 
-            count_map_background.data += count_map_obs.counts.data
+            count_map_background_observed.data += count_map_obs.counts.data
             exp_map_background.data += exp_map_obs.counts.data
             exp_map_background_total.data += exp_map_obs_total.counts.data
             livetime += obs.observation_live_time_duration
-        # count_map_background_dummies =[]
-        # for i in range(100): count_map_background_dummies.append(gamma.rvs(a=count_map_background_observed.data+1))
-        # count_map_background.data += np.average(np.array(count_map_background_dummies),axis=0) * exclusion_mask
-
+        count_map_background_dummies =[]
+        for i in range(100): count_map_background_dummies.append(gamma.rvs(a=count_map_background_observed.data+1))
+        count_map_background.data += np.mean(np.array(count_map_background_dummies),axis=0) * exclusion_mask
+        for j in range(count_map_background.data.shape[0]):
+            count_map_background.data[j, :, :] = count_map_background.data[j, :, :] * exclusion_mask
         return count_map_background, exp_map_background, exp_map_background_total, livetime
 

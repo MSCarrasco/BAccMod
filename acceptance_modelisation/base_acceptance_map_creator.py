@@ -358,10 +358,12 @@ class BaseAcceptanceMapCreator(ABC):
                 exp_map_background.data += exp_map_obs.counts.data
                 exp_map_background_total.data += exp_map_obs_total.counts.data
                 livetime += cut_obs.observation_live_time_duration
+        
         count_map_background_dummies =[]
         for i in range(100): count_map_background_dummies.append(gamma.rvs(a=count_map_background_observed.data+1))
-        count_map_background.data += np.average(np.array(count_map_background_dummies),axis=0)
-
+        count_map_background.data += np.mean(np.array(count_map_background_dummies),axis=0)
+        for j in range(count_map_background.data.shape[0]):
+            count_map_background.data[j, :, :] = count_map_background.data[j, :, :] * exclusion_mask
         return count_map_background, exp_map_background, exp_map_background_total, livetime
 
     @abstractmethod
