@@ -18,7 +18,7 @@ from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import interp1d
 from scipy.stats import gamma
 
-from .toolbox import compute_rotation_speed_fov
+from .toolbox import compute_rotation_speed_fov,get_unique_wobble_pointings
 
 
 class BaseAcceptanceMapCreator(ABC):
@@ -452,10 +452,15 @@ class BaseAcceptanceMapCreator(ABC):
 
         cos_zenith_bin = np.sort(np.arange(1.0, 0. - self.initial_cos_zenith_binning, -self.initial_cos_zenith_binning))
         cos_zenith_observations = [np.cos(obs.get_pointing_altaz(obs.tmid).zen) for obs in observations]
-        ra_observations = np.round([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations],0)
-        ra_list = np.unique(ra_observations)
-        wobble_observations = [1*(ra_observations==ra) for ra in ra_list]
+        
+        ra_observations = np.round([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in obs_collection],1)
+        dec_observations = np.round([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in obs_collection],1)
+        radec_observations = np.column_stack((ra_observations, dec_observations))
 
+        wobble_pointings = get_unique_wobble_pointings(observations)
+        wobble_observations = [[1*(radec_obs in pointings) for radec_obs in radec_observations] for pointings in wobble_pointings]
+        print(wobble_observations)
+        
         if self.cos_zenith_binning_method == "livetime":
             cut_variable_weights = [obs.observation_live_time_duration.value for obs in observations]
             min_cut_per_cos_zenith_bin = self.min_livetime_per_cos_zenith_bin.to_value(u.s)
