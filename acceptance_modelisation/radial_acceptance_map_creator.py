@@ -100,7 +100,7 @@ class RadialAcceptanceMapCreator(BaseRadialAcceptanceMapCreator):
             
             # Fill empty bins
             count_map_background_dummies =[]
-            for i in range(500): count_map_background_dummies.append(gamma.rvs(a=count_map_obs.counts.data+1))
+            for i in range(100): count_map_background_dummies.append(gamma.rvs(a=count_map_obs.counts.data+1e-6))
             count_map_obs.counts.data = np.mean(np.array(count_map_background_dummies),axis=0)
         
             exp_map_obs = MapDataset.create(geom=count_map_obs.geoms['geom'])
