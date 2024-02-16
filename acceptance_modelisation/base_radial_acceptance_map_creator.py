@@ -87,6 +87,7 @@ class BaseRadialAcceptanceMapCreator(BaseAcceptanceMapCreator):
         count_map_background, exp_map_background, exp_map_background_total, livetime = self._create_base_computation_map(
             observations)
         data_background = np.zeros((self.energy_axis.nbin, self.offset_axis.nbin)) * u.Unit('s-1 MeV-1 sr-1')
+        data_background_observed = np.zeros((self.energy_axis.nbin, self.offset_axis.nbin)) * u.Unit('s-1 MeV-1 sr-1')
         for i in range(self.offset_axis.nbin):
             if np.isclose(0. * u.deg, self.offset_axis.edges[i]):
                 selection_region = CircleSkyRegion(center=self.center_map, radius=self.offset_axis.edges[i + 1])
@@ -105,6 +106,6 @@ class BaseRadialAcceptanceMapCreator(BaseAcceptanceMapCreator):
                 value /= livetime
                 data_background[j, i] = value
 
-        acceptance_map = Background2D(axes=[self.energy_axis, self.offset_axis], data=data_background)
 
+        acceptance_map = Background2D(axes=[self.energy_axis, self.offset_axis], data=data_background)
         return acceptance_map

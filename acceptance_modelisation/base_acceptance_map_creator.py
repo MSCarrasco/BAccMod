@@ -334,7 +334,6 @@ class BaseAcceptanceMapCreator(ABC):
         livetime : astropy.unit.Unit
             The total exposure time for the model
         """
-        count_map_background_observed = WcsNDMap(geom=self.geom)
         count_map_background = WcsNDMap(geom=self.geom)
         exp_map_background = WcsNDMap(geom=self.geom, unit=u.s)
         exp_map_background_total = WcsNDMap(geom=self.geom, unit=u.s)
@@ -344,26 +343,26 @@ class BaseAcceptanceMapCreator(ABC):
             for i in range(len(time_interval) - 1):
                 cut_obs = obs.select_time(Time([time_interval[i], time_interval[i + 1]]))
                 count_map_obs, exclusion_mask = self._create_camera_map(cut_obs)
-
+                
+                # Fill empty bins
+                count_map_background_dummies =[]
+                for i in range(500): count_map_background_dummies.append(gamma.rvs(a=count_map_obs.counts.data+1))
+                count_map_obs.counts.data = np.mean(np.array(count_map_background_dummies),axis=0)
+                
                 exp_map_obs = MapDataset.create(geom=count_map_obs.geoms['geom'])
                 exp_map_obs_total = MapDataset.create(geom=count_map_obs.geoms['geom'])
                 exp_map_obs.counts.data = cut_obs.observation_live_time_duration.value
                 exp_map_obs_total.counts.data = cut_obs.observation_live_time_duration.value
-
+  
                 for j in range(count_map_obs.counts.data.shape[0]):
                     count_map_obs.counts.data[j, :, :] = count_map_obs.counts.data[j, :, :] * exclusion_mask
                     exp_map_obs.counts.data[j, :, :] = exp_map_obs.counts.data[j, :, :] * exclusion_mask
 
-                count_map_background_observed.data += count_map_obs.counts.data
+                count_map_background.data += count_map_obs.counts.data
                 exp_map_background.data += exp_map_obs.counts.data
                 exp_map_background_total.data += exp_map_obs_total.counts.data
                 livetime += cut_obs.observation_live_time_duration
-        
-        count_map_background_dummies =[]
-        for i in range(100): count_map_background_dummies.append(gamma.rvs(a=count_map_background_observed.data+1))
-        count_map_background.data += np.mean(np.array(count_map_background_dummies),axis=0)
-        for j in range(count_map_background.data.shape[0]):
-            count_map_background.data[j, :, :] = count_map_background.data[j, :, :] * exclusion_mask
+
         return count_map_background, exp_map_background, exp_map_background_total, livetime
 
     @abstractmethod
