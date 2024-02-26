@@ -61,7 +61,7 @@ class BaseAcceptanceMapCreator(ABC):
             Minimum livetime per zenith bins
         initial_cos_zenith_binning : float, optional
             Initial bin size for cos zenith binning
-        max_angular_separation : float
+        max_angular_separation : float, optional
             The maximum angular separation between identified wobbles, in degrees
         max_fraction_pixel_rotation_fov : float, optional
             For camera frame transformation the maximum size relative to a pixel a rotation is allowed
