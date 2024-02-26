@@ -32,7 +32,7 @@ def compute_rotation_speed_fov(time_evaluation: Time,
         pointing_altaz.alt)
     return omega
 
-def get_unique_wobble_pointings(observations: Observations):
+def get_unique_wobble_pointings(observations: Observations, max_angular_separation=0.2):
     """
     Compute the angular separation between pointings and return a list 
     of detected wobbles with their associated similar pointings
@@ -41,6 +41,8 @@ def get_unique_wobble_pointings(observations: Observations):
     ----------
     observations : gammapy.data.observations.Observations
         The list of observations
+    angsep_min : float
+        The maximum angular separation between identified wobbles
 
     Returns
     -------
