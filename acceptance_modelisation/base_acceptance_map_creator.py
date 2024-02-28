@@ -516,14 +516,14 @@ class BaseAcceptanceMapCreator(ABC):
         if self.verbose:
             print("cos zenith bins: ",list(np.round(cos_zenith_bin,2)))
             print("cos zenith bin centers: ",list(np.round(bin_center,2)))
-            print(f"{self.cos_zenith_binning_method} per bin: ",list(np.round(cut_variable_per_bin,2)))
+            print(f"{self.cos_zenith_binning_method} per bin: ",list(cut_variable_per_bin.astype(int)))
             if self.cos_zenith_binning_method == "livetime": print(f"observation per bin: ", 
                                                                    list(np.histogram(cos_zenith_observations, bins=cos_zenith_bin)[0]))
             wobble_observations_bool_arr = [(np.array(wobble_observations.tolist()) == wobble) for wobble in np.unique(np.array(wobble_observations))]
             livetime_observations_and_wobble = [np.array(livetime_observations)*wobble_bool for wobble_bool in wobble_observations_bool_arr]
             for i,wobble in enumerate(np.unique(np.array(wobble_observations))):
-                print(f"{wobble} observation per bin: {np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=1*wobble_observations_bool_arr[i])[0]}")
-                print(f"{wobble} livetime per bin: {np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=livetime_observations_and_wobble[i])[0]}")
+                print(f"{wobble} observation per bin: {list(np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=1*wobble_observations_bool_arr[i])[0])}")
+                print(f"{wobble} livetime per bin: {list(np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=livetime_observations_and_wobble[i])[0].astype(int))}")
             
         acceptance_map = {}
         if len(binned_model) <= 1:
