@@ -21,6 +21,7 @@ class BaseRadialAcceptanceMapCreator(BaseAcceptanceMapCreator):
                  min_observation_per_cos_zenith_bin: int = 3,
                  min_livetime_per_cos_zenith_bin: u.Quantity = 3000. * u.s,
                  initial_cos_zenith_binning: float = 0.01,
+                 max_angular_separation: float = 0.4,
                  max_fraction_pixel_rotation_fov: float = 0.5,
                  time_resolution_rotation_fov: u.Quantity = 0.1 * u.s,
                  verbose: bool = False) -> None:
@@ -47,6 +48,8 @@ class BaseRadialAcceptanceMapCreator(BaseAcceptanceMapCreator):
             Minimum livetime per zenith bins
         initial_cos_zenith_binning : float, optional
             Initial bin size for cos zenith binning
+        max_angular_separation : float, optional
+            The maximum angular separation between identified wobbles, in degrees
         max_fraction_pixel_rotation_fov : float, optional
             For camera frame transformation the maximum size relative to a pixel a rotation is allowed
         time_resolution_rotation_fov : astropy.unit.Quantity, optional
@@ -68,7 +71,7 @@ class BaseRadialAcceptanceMapCreator(BaseAcceptanceMapCreator):
 
         # Initiate upper instance
         super().__init__(energy_axis, max_offset, spatial_resolution, exclude_regions, cos_zenith_binning_method, min_observation_per_cos_zenith_bin,
-                         min_livetime_per_cos_zenith_bin, initial_cos_zenith_binning, max_fraction_pixel_rotation_fov, 
+                         min_livetime_per_cos_zenith_bin, initial_cos_zenith_binning, max_angular_separation, max_fraction_pixel_rotation_fov, 
                          time_resolution_rotation_fov, verbose)
 
     def create_acceptance_map(self, observations: Observations) -> Background2D:

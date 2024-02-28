@@ -34,7 +34,7 @@ class BaseAcceptanceMapCreator(ABC):
                  min_observation_per_cos_zenith_bin: int = 3,
                  min_livetime_per_cos_zenith_bin: u.Quantity = 3000. * u.s,
                  initial_cos_zenith_binning: float = 0.01,
-                 max_angular_separation: float = 0.2,
+                 max_angular_separation: float = 0.4,
                  max_fraction_pixel_rotation_fov: float = 0.5,
                  time_resolution_rotation_fov: u.Quantity = 0.1 * u.s,
                  verbose: bool = False) -> None:
@@ -466,7 +466,7 @@ class BaseAcceptanceMapCreator(ABC):
         dec_observations = np.array([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in observations])
         radec_observations = np.column_stack((ra_observations, dec_observations))
 
-        wobble_observations = get_unique_wobble_pointings(observations)
+        wobble_observations = get_unique_wobble_pointings(observations,self.max_angular_separation)
 
         if self.cos_zenith_binning_method == "livetime":
             cut_variable_weights = [obs.observation_live_time_duration.value for obs in observations]

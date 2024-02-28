@@ -21,7 +21,7 @@ class RadialAcceptanceMapCreator(BaseRadialAcceptanceMapCreator):
                  min_observation_per_cos_zenith_bin: int = 3,
                  min_livetime_per_cos_zenith_bin: u.Quantity = 3000. * u.s,
                  initial_cos_zenith_binning: float = 0.01,
-                 max_angular_separation: float = 0.2,
+                 max_angular_separation: float = 0.4,
                  max_fraction_pixel_rotation_fov: float = 0.5,
                  time_resolution_rotation_fov: u.Quantity = 0.1 * u.s,
                  verbose: bool = False) -> None:

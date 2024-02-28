@@ -32,7 +32,7 @@ def compute_rotation_speed_fov(time_evaluation: Time,
         pointing_altaz.alt)
     return omega
 
-def get_unique_wobble_pointings(observations: Observations, max_angular_separation=0.2):
+def get_unique_wobble_pointings(observations: Observations, max_angular_separation=0.4):
     """
     Compute the angular separation between pointings and return a list 
     of detected wobbles with their associated similar pointings
@@ -49,7 +49,6 @@ def get_unique_wobble_pointings(observations: Observations, max_angular_separati
     unique_wobble_list : list
         A list of the wobbles detected and their associated similar pointings (angular separation < 0.4°)
     """
-    # TODO Make the maximum angular distance an input parameter
     all_ra_observations = np.array([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations])
     all_dec_observations = np.array([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in observations])
     ra_observations = deepcopy(all_ra_observations)
@@ -62,9 +61,9 @@ def get_unique_wobble_pointings(observations: Observations, max_angular_separati
         i=i+1
         keywobble='W'+str(i)
         mask = (angular_separation(ra_observations[0]*u.deg, dec_observations[0]*u.deg,
-                                   ra_observations*u.deg, dec_observations*u.deg) < 0.4*u.deg)
+                                   ra_observations*u.deg, dec_observations*u.deg) < max_angular_separation*u.deg)
         mask_2 = (angular_separation(np.mean(ra_observations[mask])*u.deg, np.mean(dec_observations[mask])*u.deg,
-                                     all_ra_observations*u.deg, all_dec_observations*u.deg) < 0.4*u.deg)
+                                     all_ra_observations*u.deg, all_dec_observations*u.deg) < max_angular_separation*u.deg)
         wobbles_dict[keywobble] = [np.mean(all_ra_observations[mask_2 & mask_allremaining]), np.mean(all_dec_observations[mask_2 & mask_allremaining])]
         wobbles[mask_2 & mask_allremaining] = keywobble
         mask_allremaining = mask_allremaining * ~mask_2
