@@ -114,23 +114,24 @@ class BaseAcceptanceMapCreator(ABC):
         """
 
         # Transform to altaz frame
-        altaz_frame = AltAz(obstime=obs.events.time,
-                            location=obs.observatory_earth_location)
-        events_altaz = obs.events.radec.transform_to(altaz_frame)
-        pointing_altaz = obs.get_pointing_icrs(obs.tmid).transform_to(altaz_frame)
-
-        # Rotation to transform to camera frame
-        camera_frame = SkyOffsetFrame(origin=AltAz(alt=pointing_altaz.alt,
-                                                   az=pointing_altaz.az,
-                                                   obstime=obs.events.time,
-                                                   location=obs.observatory_earth_location),
-                                      rotation=[0., ] * len(obs.events.time) * u.deg)
-        events_camera_frame = events_altaz.transform_to(camera_frame)
-
-        # Formatting data for the output
         camera_frame_events = obs.events.copy()
-        camera_frame_events.table['RA'] = events_camera_frame.lon
-        camera_frame_events.table['DEC'] = events_camera_frame.lat
+        if len(obs.events.time)>0:
+            altaz_frame = AltAz(obstime=obs.events.time,
+                                location=obs.observatory_earth_location)
+            events_altaz = obs.events.radec.transform_to(altaz_frame)
+            pointing_altaz = obs.get_pointing_icrs(obs.tmid).transform_to(altaz_frame)
+
+            # Rotation to transform to camera frame
+            camera_frame = SkyOffsetFrame(origin=AltAz(alt=pointing_altaz.alt,
+                                                       az=pointing_altaz.az,
+                                                       obstime=obs.events.time,
+                                                       location=obs.observatory_earth_location),
+                                          rotation=[0., ] * len(obs.events.time) * u.deg)
+            events_camera_frame = events_altaz.transform_to(camera_frame)
+
+            # Formatting data for the output
+            camera_frame_events.table['RA'] = events_camera_frame.lon
+            camera_frame_events.table['DEC'] = events_camera_frame.lat
         camera_frame_obs_info = copy.deepcopy(obs.obs_info)
         camera_frame_obs_info['RA_PNT'] = 0.
         camera_frame_obs_info['DEC_PNT'] = 0.
