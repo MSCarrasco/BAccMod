@@ -4,6 +4,7 @@ from astropy.coordinates import AltAz, SkyCoord, angular_separation
 from astropy.coordinates.earth import OMEGA_EARTH, EarthLocation
 from astropy.time import Time
 from gammapy.data import Observations
+from copy import deepcopy
 
 def compute_rotation_speed_fov(time_evaluation: Time,
                                pointing_sky: SkyCoord,
