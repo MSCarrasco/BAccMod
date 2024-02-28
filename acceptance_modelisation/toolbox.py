@@ -45,29 +45,29 @@ def get_unique_wobble_pointings(observations: Observations):
     Returns
     -------
     unique_wobble_list : list
-        A list of the wobbles detected and their associated similar pointings (angular separation < 0.02°)
+        A list of the wobbles detected and their associated similar pointings (angular separation < 0.4°)
     """
-    ra_observations = np.round([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations],1)
-    dec_observations = np.round([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in observations],1)
-    radec_observations = np.column_stack((ra_observations, dec_observations))
-    radec_list = np.unique(radec_observations,axis=0)
+    # TODO Make the maximum angular distance an input parameter
+    all_ra_observations = np.array([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations])
+    all_dec_observations = np.array([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in observations])
+    ra_observations = deepcopy(all_ra_observations)
+    dec_observations = deepcopy(all_dec_observations)
+    wobbles = np.empty(shape=len(all_ra_observations), dtype=np.object_)
+    wobbles_dict = {}
+    i=0
+    mask_allremaining = np.ones(shape=len(all_ra_observations),dtype=bool)
+    while len(ra_observations)>0:
+        i=i+1
+        keywobble='W'+str(i)
+        mask = (angular_separation(ra_observations[0]*u.deg, dec_observations[0]*u.deg,
+                                   ra_observations*u.deg, dec_observations*u.deg) < 0.4*u.deg)
+        mask_2 = (angular_separation(np.mean(ra_observations[mask])*u.deg, np.mean(dec_observations[mask])*u.deg,
+                                     all_ra_observations*u.deg, all_dec_observations*u.deg) < 0.4*u.deg)
+        wobbles_dict[keywobble] = [np.mean(all_ra_observations[mask_2 & mask_allremaining]), np.mean(all_dec_observations[mask_2 & mask_allremaining])]
+        wobbles[mask_2 & mask_allremaining] = keywobble
+        mask_allremaining = mask_allremaining * ~mask_2
+        ra_observations = all_ra_observations[mask_allremaining]
+        dec_observations = all_dec_observations[mask_allremaining]
 
-    pointing_angsep_list = []
-    for i in range(len(radec_list)): 
-        pointing_angsep_list.append(np.round([angular_separation(radec_list[i][0]*u.deg, radec_list[i][1]*u.deg,
-                                                                 ra*u.deg, dec*u.deg).to_value(u.deg) for ra,dec in radec_list],1))
-
-    is_same_wobble_arr = np.vstack(pointing_angsep_list) <= 0.2
-
-    wobble_list = [radec_list[np.where(is_same_wobble)] for is_same_wobble in is_same_wobble_arr]
-    unique_wobble_list = []
-    seen = set()
-
-    for arr in wobble_list:
-        arr_tuple = tuple(map(tuple, arr))
-        if arr_tuple not in seen:
-            unique_wobble_list.append(arr)
-            seen.add(arr_tuple)
-    print(f"{len(unique_wobble_list)} wobbles were found: ")
-    for i in range(len(unique_wobble_list)): print(f"W{i+1} associated pointings (ra,dec): {list(unique_wobble_list[i])}")
-    return unique_wobble_list
+    print(f"{len(wobbles_dict)} wobbles were found: \n", wobbles_dict)
+    return wobbles
