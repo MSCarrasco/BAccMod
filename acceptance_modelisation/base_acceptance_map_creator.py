@@ -461,7 +461,7 @@ class BaseAcceptanceMapCreator(ABC):
 
         cos_zenith_bin = np.sort(np.arange(1.0, 0. - self.initial_cos_zenith_binning, -self.initial_cos_zenith_binning))
         cos_zenith_observations = [np.cos(obs.get_pointing_altaz(obs.tmid).zen) for obs in observations]
-
+        livetime_observations = [obs.observation_live_time_duration.to_value(u.s) for obs in observations]
         ra_observations = np.array([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations])
         dec_observations = np.array([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in observations])
         radec_observations = np.column_stack((ra_observations, dec_observations))
@@ -469,7 +469,7 @@ class BaseAcceptanceMapCreator(ABC):
         wobble_observations = get_unique_wobble_pointings(observations,self.max_angular_separation)
 
         if self.cos_zenith_binning_method == "livetime":
-            cut_variable_weights = [obs.observation_live_time_duration.value for obs in observations]
+            cut_variable_weights = livetime_observations
             min_cut_per_cos_zenith_bin = self.min_livetime_per_cos_zenith_bin.to_value(u.s)
         elif self.cos_zenith_binning_method == "observation":
             cut_variable_weights = np.ones(len(cos_zenith_observations),dtype=int)
@@ -510,21 +510,21 @@ class BaseAcceptanceMapCreator(ABC):
         binned_model = [self.create_acceptance_map(binned_obs) for binned_obs in binned_observations]
         bin_center = []
         for i in range(len(binned_observations)):
-            weighted_cos_zenith_bin_per_obs = []
-            livetime_per_obs = []
-            for obs in binned_observations[i]:
-                weighted_cos_zenith_bin_per_obs.append(obs.observation_live_time_duration * np.cos(obs.get_pointing_altaz(obs.tmid).zen))
-                livetime_per_obs.append(obs.observation_live_time_duration)
-            bin_center.append(
-                np.sum([wcos.value for wcos in weighted_cos_zenith_bin_per_obs])/np.sum([livet.value for livet in livetime_per_obs]))
+            livetime_per_obs = np.array([obs.observation_live_time_duration.to_value(u.s) for obs in binned_observations[i]])
+            weighted_cos_zenith_bin_per_obs = livetime_per_obs*np.array([np.cos(obs.get_pointing_altaz(obs.tmid).zen) for obs in binned_observations[i]])
+            bin_center.append(np.sum(weighted_cos_zenith_bin_per_obs)/np.sum(livetime_per_obs))
         if self.verbose:
             print("cos zenith bins: ",list(np.round(cos_zenith_bin,2)))
             print("cos zenith bin centers: ",list(np.round(bin_center,2)))
             print(f"{self.cos_zenith_binning_method} per bin: ",list(np.round(cut_variable_per_bin,2)))
-            print(f"Wobble per bin: {[np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=wobble_obs)[0] for wobble_obs in wobble_observations]}")
             if self.cos_zenith_binning_method == "livetime": print(f"observation per bin: ", 
                                                                    list(np.histogram(cos_zenith_observations, bins=cos_zenith_bin)[0]))
-
+            wobble_observations_bool_arr = [(np.array(wobble_observations.tolist()) == wobble) for wobble in np.unique(np.array(wobble_observations))]
+            livetime_observations_and_wobble = [np.array(livetime_observations)*wobble_bool for wobble_bool in wobble_observations_bool_arr]
+            for i,wobble in enumerate(np.unique(np.array(wobble_observations))):
+                print(f"{wobble} observation per bin: {np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=1*wobble_observations_bool_arr[i])[0]}")
+                print(f"{wobble} livetime per bin: {np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=livetime_observations_and_wobble[i])[0]}")
+            
         acceptance_map = {}
         if len(binned_model) <= 1:
             logging.warning('Only one zenith bin, zenith interpolation deactivated')
