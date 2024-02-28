@@ -16,6 +16,7 @@ from gammapy.maps import WcsNDMap, WcsGeom, Map, MapAxis
 from regions import CircleSkyRegion, SkyRegion
 from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import interp1d
+from scipy.spatial import KDTree
 from scipy.stats import gamma
 
 from .toolbox import compute_rotation_speed_fov,get_unique_wobble_pointings
@@ -453,13 +454,12 @@ class BaseAcceptanceMapCreator(ABC):
 
         cos_zenith_bin = np.sort(np.arange(1.0, 0. - self.initial_cos_zenith_binning, -self.initial_cos_zenith_binning))
         cos_zenith_observations = [np.cos(obs.get_pointing_altaz(obs.tmid).zen) for obs in observations]
-        
-        ra_observations = np.round([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations],1)
-        dec_observations = np.round([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in observations],1)
+
+        ra_observations = np.array([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations])
+        dec_observations = np.array([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in observations])
         radec_observations = np.column_stack((ra_observations, dec_observations))
 
-        wobble_pointings = get_unique_wobble_pointings(observations)
-        wobble_observations = [[1*(radec_obs in pointings) for radec_obs in radec_observations] for pointings in wobble_pointings]
+        wobble_observations = get_unique_wobble_pointings(observations)
 
         if self.cos_zenith_binning_method == "livetime":
             cut_variable_weights = [obs.observation_live_time_duration.value for obs in observations]
@@ -473,9 +473,12 @@ class BaseAcceptanceMapCreator(ABC):
 
         i = 0
         while i < len(cut_variable_per_bin):
-            wobble_per_bin = [np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=wobble_obs)[0] for wobble_obs in wobble_observations]
-            at_least_2_wobble_per_bin = np.prod(wobble_per_bin, axis=0)>0
-            if not at_least_2_wobble_per_bin[i] and (i + 1) < len(cut_variable_per_bin):
+            wobble_in_bin = len(np.unique(np.array(wobble_observations)[
+                                              (cos_zenith_observations >= cos_zenith_bin[i]) &
+                                              (cos_zenith_observations < cos_zenith_bin[i + 1])
+                                                                        ]))
+            at_least_2_wobble = wobble_in_bin > 1
+            if not at_least_2_wobble and (i + 1) < len(cut_variable_per_bin):
                 cut_variable_per_bin[i] += cut_variable_per_bin[i + 1]
                 cut_variable_per_bin = np.delete(cut_variable_per_bin, i + 1)
                 cos_zenith_bin = np.delete(cos_zenith_bin, i + 1)
