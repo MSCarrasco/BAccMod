@@ -460,13 +460,12 @@ class BaseAcceptanceMapCreator(ABC):
         """
 
         cos_zenith_bin = np.sort(np.arange(1.0, 0. - self.initial_cos_zenith_binning, -self.initial_cos_zenith_binning))
-        cos_zenith_observations = [np.cos(obs.get_pointing_altaz(obs.tmid).zen) for obs in observations]
-        livetime_observations = [obs.observation_live_time_duration.to_value(u.s) for obs in observations]
+        cos_zenith_observations = np.array([np.cos(obs.get_pointing_altaz(obs.tmid).zen) for obs in observations])
+        livetime_observations = np.array([obs.observation_live_time_duration.to_value(u.s) for obs in observations])
         ra_observations = np.array([obs.get_pointing_icrs(obs.tmid).ra.to_value(u.deg) for obs in observations])
         dec_observations = np.array([obs.get_pointing_icrs(obs.tmid).dec.to_value(u.deg) for obs in observations])
-        radec_observations = np.column_stack((ra_observations, dec_observations))
 
-        wobble_observations = get_unique_wobble_pointings(observations,self.max_angular_separation)
+        wobble_observations = np.array(get_unique_wobble_pointings(observations,self.max_angular_separation))
 
         if self.cos_zenith_binning_method == "livetime":
             cut_variable_weights = livetime_observations
@@ -480,12 +479,18 @@ class BaseAcceptanceMapCreator(ABC):
 
         i = 0
         while i < len(cut_variable_per_bin):
-            wobble_in_bin = len(np.unique(np.array(wobble_observations)[
-                                              (cos_zenith_observations >= cos_zenith_bin[i]) &
-                                              (cos_zenith_observations < cos_zenith_bin[i + 1])
-                                                                        ]))
-            at_least_2_wobble = wobble_in_bin > 1
+            in_coszd_bin = (cos_zenith_observations >= cos_zenith_bin[i]) & (cos_zenith_observations < cos_zenith_bin[i + 1])
+            wobble_in_bin = wobble_observations[in_coszd_bin]
+            obs_livetime_in_bin = cut_variable_weights[in_coszd_bin]
+            wobble_livetime_in_bin=np.array([obs_livetime_in_bin[wobble_in_bin == wobble].sum() for wobble in np.unique(wobble_in_bin)])
+            at_least_2_wobble = len(np.unique(wobble_in_bin)) > 1
+            if at_least_2_wobble: livetime_min_for_each_wobble = np.all(wobble_livetime_in_bin >= min_cut_per_cos_zenith_bin/len(np.unique(wobble_in_bin)))
+            
             if not at_least_2_wobble and (i + 1) < len(cut_variable_per_bin):
+                cut_variable_per_bin[i] += cut_variable_per_bin[i + 1]
+                cut_variable_per_bin = np.delete(cut_variable_per_bin, i + 1)
+                cos_zenith_bin = np.delete(cos_zenith_bin, i + 1)
+            elif not livetime_min_for_each_wobble and (i + 1) < len(cut_variable_per_bin):
                 cut_variable_per_bin[i] += cut_variable_per_bin[i + 1]
                 cut_variable_per_bin = np.delete(cut_variable_per_bin, i + 1)
                 cos_zenith_bin = np.delete(cos_zenith_bin, i + 1)
