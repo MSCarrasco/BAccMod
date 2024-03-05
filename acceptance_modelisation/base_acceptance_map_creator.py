@@ -352,11 +352,6 @@ class BaseAcceptanceMapCreator(ABC):
                     cut_obs = obs.select_time(Time([time_interval[i], time_interval[i + 1]]))
                     count_map_obs, exclusion_mask = self._create_camera_map(cut_obs)
 
-                    # Fill empty bins
-                    count_map_background_dummies =[]
-                    for i in range(100): count_map_background_dummies.append(gamma.rvs(a=count_map_obs.counts.data+1e-6))
-                    count_map_obs.counts.data = np.mean(np.array(count_map_background_dummies),axis=0)
-
                     exp_map_obs = MapDataset.create(geom=count_map_obs.geoms['geom'])
                     exp_map_obs_total = MapDataset.create(geom=count_map_obs.geoms['geom'])
                     exp_map_obs.counts.data = cut_obs.observation_live_time_duration.value
