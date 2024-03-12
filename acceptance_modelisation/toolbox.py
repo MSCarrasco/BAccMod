@@ -75,31 +75,33 @@ def get_unique_wobble_pointings(observations: Observations, max_angular_separati
     print(f"{len(wobbles_dict)} wobbles were found: \n", wobbles_dict)
     return wobbles
 
-def plot_coszd_binning(wobble_observations,cos_zenith_observations,cos_zenith_bin,bin_center,livetime_observations_and_wobble,zd_lim=(55,75)):
+def plot_coszd_binning(wobble_observations,cos_zenith_observations,cos_zenith_bin,bin_center,livetime_observations_and_wobble,min_livetime_per_cos_zenith_bin,zd_lim=(55,75)):
     fig,ax=plt.subplots(figsize=(5,5))
     for i,wobble in enumerate(np.unique(np.array(wobble_observations))): ax.hist(cos_zenith_observations, bins=cos_zenith_bin,weights=livetime_observations_and_wobble[i],alpha=0.6,label=f"{wobble}")
-    ylim=ax.get_ylim()
-    ax.vlines(cos_zenith_bin,ylim[0],ylim[1],ls=':',color='red',label='bin edges')
 
-    new_ticks_coszd=np.concatenate(([np.cos(zd_lim[1]*u.deg)],bin_center,[np.cos(zd_lim[1]*u.deg)]))
+    new_ticks_coszd=np.concatenate(([np.cos(zd_lim[1]*u.deg)],bin_center,[np.cos(zd_lim[0]*u.deg)]))
 
     ax.set_xticks(new_ticks_coszd)
     ax.set_xticklabels(np.round(new_ticks_coszd,2), rotation=45)
 
-
     # Create a second x-axis
     ax2 = ax.twiny()
     ax2.set_xticks(new_ticks_coszd)
-    ax2.set_xticklabels(np.round(np.degrees(np.arccos(new_ticks_coszd)),1), rotation=45)
+    ax2.set_xticklabels(np.degrees(np.arccos(new_ticks_coszd)).astype(int), rotation=45)
 
-    # Set label for the second x-axis
+    # Set labels
     ax.set_xlabel('cos(zd) bin center')
+    ax.set_ylabel('livetime [s]')
     ax2.set_xlabel('cos(zd) bin center in zenith [°]')
 
-    ax.set_xlim(np.cos(75*u.deg),np.cos(55*u.deg))
-    ax2.set_xlim(np.cos(75*u.deg),np.cos(55*u.deg))
-
+    xlim=(np.cos(zd_lim[1]*u.deg),np.cos(zd_lim[0]*u.deg))
+    ax.set_xlim(xlim)
+    ax2.set_xlim(xlim)
+    ax.hlines([min_livetime_per_cos_zenith_bin.to_value(u.s)/len(np.unique(np.array(wobble_observations)))],xlim[0],xlim[1],ls='-',color='red',label='min livetime',alpha=0.5)
+    
+    ylim=ax.get_ylim()    
+    ax.vlines(cos_zenith_bin,ylim[0],ylim[1],ls=':',color='grey',label='bin edges',alpha=0.5)
     ax.legend(loc='best')
-    plt.suptitle("Livetime per wobble and per cos zd bin")
+    plt.suptitle("Livetime per wobble and per cos(zd) bin\n")
     plt.tight_layout()
     plt.show()
