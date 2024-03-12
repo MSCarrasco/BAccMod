@@ -20,7 +20,7 @@ from scipy.interpolate import interp1d
 from scipy.spatial import KDTree
 from scipy.stats import gamma
 
-from .toolbox import compute_rotation_speed_fov,get_unique_wobble_pointings
+from .toolbox import compute_rotation_speed_fov,get_unique_wobble_pointings,plot_coszd_binning
 
 
 class BaseAcceptanceMapCreator(ABC):
@@ -524,7 +524,7 @@ class BaseAcceptanceMapCreator(ABC):
             for i,wobble in enumerate(np.unique(np.array(wobble_observations))):
                 print(f"{wobble} observation per bin: {list(np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=1*wobble_observations_bool_arr[i])[0])}")
                 print(f"{wobble} livetime per bin: {list(np.histogram(cos_zenith_observations, bins=cos_zenith_bin, weights=livetime_observations_and_wobble[i])[0].astype(int))}")
-            
+            plot_coszd_binning(wobble_observations,cos_zenith_observations,cos_zenith_bin,bin_center,livetime_observations_and_wobble,self.min_livetime_per_cos_zenith_bin,zd_lim=(55,75))
         acceptance_map = {}
         if len(binned_model) <= 1:
             logging.warning('Only one zenith bin, zenith interpolation deactivated')
