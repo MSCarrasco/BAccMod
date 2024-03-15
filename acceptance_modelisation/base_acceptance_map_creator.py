@@ -13,7 +13,7 @@ from gammapy.datasets import MapDataset
 from gammapy.irf import Background2D, Background3D
 from gammapy.irf.background import BackgroundIRF
 from gammapy.makers import MapDatasetMaker, SafeMaskMaker, FoVBackgroundMaker
-from gammapy.maps import WcsNDMap, WcsGeom, Map, MapAxis
+from gammapy.maps import WcsNDMap, WcsGeom, Map, MapAxis, RegionGeom
 from regions import CircleSkyRegion, SkyRegion
 from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import interp1d
@@ -120,7 +120,7 @@ class BaseAcceptanceMapCreator(ABC):
             altaz_frame = AltAz(obstime=obs.events.time,
                                 location=obs.observatory_earth_location)
             events_altaz = obs.events.radec.transform_to(altaz_frame)
-            pointing_altaz = obs.get_pointing_icrs(obs.tmid).transform_to(altaz_frame)
+            pointing_altaz = obs.get_pointing_icrs(obs.events.time).transform_to(altaz_frame)
 
             # Rotation to transform to camera frame
             camera_frame = SkyOffsetFrame(origin=AltAz(alt=pointing_altaz.alt,
@@ -314,6 +314,11 @@ class BaseAcceptanceMapCreator(ABC):
         livetime = 0. * u.s
         with erfa_astrom.set(ErfaAstromInterpolator(1000 * u.s)):
             for obs in observations:
+                # Filter events in exclusion regions
+                geom = RegionGeom.from_regions(self.exclude_regions)
+                mask = geom.contains(obs.events.radec)
+                obs._events = obs.events.select_row_subset(~mask)
+
                 time_interval = self._compute_time_intervals_based_on_fov_rotation(obs)
                 camera_frame_obs = self._transform_obs_to_camera_frame(obs)
                 count_map_obs, _ = self._create_map(camera_frame_obs, self.geom, [], add_bkg=False)
@@ -338,7 +343,6 @@ class BaseAcceptanceMapCreator(ABC):
                 exclusion_mask *= 1 / (time_interval[-1] - time_interval[0]).value
 
                 for j in range(count_map_obs.counts.data.shape[0]):
-                    count_map_obs.counts.data[j, :, :] = count_map_obs.counts.data[j, :, :] * exclusion_mask
                     exp_map_obs.counts.data[j, :, :] = exp_map_obs.counts.data[j, :, :] * exclusion_mask
 
                 count_map_background.data += count_map_obs.counts.data

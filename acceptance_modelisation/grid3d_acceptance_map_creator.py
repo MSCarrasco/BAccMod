@@ -2,7 +2,7 @@ from typing import List, Optional
 
 import astropy.units as u
 from gammapy.data import Observations
-from gammapy.irf import Background3D
+from gammapy.irf import Background3D, FoVAlignment
 from gammapy.maps import MapAxis
 from regions import SkyRegion
 
@@ -11,9 +11,14 @@ from .base_acceptance_map_creator import BaseAcceptanceMapCreator
 from iminuit import Minuit
 from .modeling import *
 
+import matplotlib.pyplot as plt
+
 FIT_FUNCTION = {'fit_gaussian': gaussian2d,
                 'fit_ylin_gaussian': ylinear_1dgaussian,
-                'fit_bilin_gaussian': bilinear_1dgaussian}
+                'fit_bilin_gaussian': bilinear_1dgaussian,
+                'fit_ring_bi_gaussian': ring_bi_gaussian,
+                'fit_bi_gaussian': bi_gaussian,
+                'fit_radial_poly': radial_poly}
 
 
 class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
@@ -23,7 +28,7 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
                  offset_axis: MapAxis,
                  oversample_map: int = 10,
                  exclude_regions: Optional[List[SkyRegion]] = None,
-                 cos_zenith_binning_method: str ='livetime',
+                 cos_zenith_binning_method: str = 'livetime',
                  min_observation_per_cos_zenith_bin: int = 15,
                  min_livetime_per_cos_zenith_bin: u.Quantity = 3000. * u.s,
                  initial_cos_zenith_binning: float = 0.01,
@@ -33,6 +38,7 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
                  method: str = 'stack',
                  fix_center: bool = True,
                  minuit_print_level: int = 0,
+                 check_model: 'str' = 'nothing',
                  verbose: bool = False) -> None:
         """
         Create the class for calculating 3D grid acceptance model
@@ -69,6 +75,10 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
             Decide if models center should be fitted or not
         minuit_print_level: int, optional
             Define the verbosity of the call to minuit if fitting a model
+        check_model: str, optional
+            Define the level of verbosity of the model fitting. 'nothing' to display no information,
+            'print' to display seeds and end parameters and total residual,
+            'plot' to also show the counts, model and residual maps
         verbose : bool, optional
             If True, print the information related to the cos zenith binning
         """
@@ -91,6 +101,7 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
         self.method = method
         self.fix_center = fix_center
         self.minuit_print_level = minuit_print_level
+        self.check_model = check_model
 
         # Initiate upper instance
         super().__init__(energy_axis, max_offset, spatial_resolution, exclude_regions,
@@ -111,10 +122,12 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
             return -np.sum(
                 log_poisson(count_map, fnc(x, y, *args) * exp_map / exp_map_total, log_factorial_count_map))
 
+        if self.check_model != 'nothing':
+            print("seeds : ", seeds)
         m = Minuit(f,
                    name=seeds.keys(),
                    *seeds.values())
-        if self.fix_center:
+        if self.fix_center and 'x_cm' in seeds.keys():
             m.fixed['x_cm'] = True
             m.fixed['y_cm'] = True
         for key, val in bounds.items():
@@ -122,6 +135,20 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
         m.print_level = self.minuit_print_level
         m.errordef = Minuit.LIKELIHOOD
         m.simplex().migrad()
+        if self.check_model != 'nothing':
+            residuals = count_map - fnc(x, y, **m.values.to_dict()) * exp_map / exp_map_total
+            print("Fit results : ", m.values.to_dict())
+            print(f"Average residuals : {np.sum(residuals)}, std = {np.std(residuals)}")
+
+        if self.check_model == 'plot':
+            fig, ax = plt.subplots(1, 3, sharey='all', figsize=(16, 4))
+            fig.colorbar(ax[0].imshow(count_map))
+            ax[0].set_title("Counts")
+            fig.colorbar(ax[1].imshow(fnc(x, y, **m.values.to_dict())))
+            ax[1].set_title("Model")
+            fig.colorbar(ax[2].imshow(residuals))
+            ax[2].set_title("Residual Counts-Model\n(Exposure corrected)")
+            plt.show()
         return fnc(x, y, **m.values.to_dict())
 
     def create_acceptance_map(self, observations: Observations) -> Background3D:
@@ -164,6 +191,8 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
         else:
             corrected_counts = np.empty(count_map_background_downsample.data.shape)
             for e in range(count_map_background_downsample.data.shape[0]):
+                if self.check_model != 'nothing':
+                    print(f"Energy bin #{e}")
                 corrected_counts[e] = self.fit_background(count_map_background_downsample.data[e].astype(int),
                                                           exp_map_background_total_downsample.data[e],
                                                           exp_map_background_downsample.data[e],
@@ -172,6 +201,7 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
                                                                              np.newaxis] / livetime
 
         acceptance_map = Background3D(axes=[self.energy_axis, extended_offset_axis_x, extended_offset_axis_y],
-                                      data=data_background.to(u.Unit('s-1 MeV-1 sr-1')))
+                                      data=data_background.to(u.Unit('s-1 MeV-1 sr-1')),
+                                      fov_alignment=FoVAlignment.ALTAZ)
 
         return acceptance_map

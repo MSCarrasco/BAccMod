@@ -122,6 +122,35 @@ def bilinear_1dgaussian(x, y, size, x_cm, y_cm, width, x_gradient, y_gradient, *
     return (1 + x * x_gradient) * (1 + y * y_gradient) * gaussian1d(x, y, size, x_cm, y_cm, width)
 
 
+def ring_bi_gaussian(x, y, size, r_cm, width, **kwargs):
+    r = np.sqrt(x ** 2 + y ** 2)
+    a = 2 * width ** 2
+    # Evaluate the 2D gaussian term
+    gauss2d_1 = np.exp(-(r - r_cm) ** 2 / a)
+    gauss2d_2 = np.exp(-(-r - r_cm) ** 2 / a)
+    gauss2d = gauss2d_1 + gauss2d_2
+    gauss2d = size / np.sum(gauss2d) * gauss2d
+    return gauss2d
+
+
+def bi_gaussian(x, y, size, ratio, width, width2, **kwargs):
+    r2 = x ** 2 + y ** 2
+    a = 2 * width ** 2
+    a2 = 2 * width2 ** 2
+    # Evaluate the 2D gaussian term
+    gauss2d_1 = np.exp(-r2 / a)
+    gauss2d_2 = ratio * np.exp(-r2 / a2)
+    gauss2d = gauss2d_1 + gauss2d_2
+    gauss2d = size / np.sum(gauss2d) * gauss2d
+    return gauss2d
+
+
+def radial_poly(x, y, size, p0, p1, p2, p3, p4, p5):
+    r = np.sqrt(x ** 2 + y ** 2)
+    poly = p0 + p1 * r + p2 * r ** 2 + p3 * r ** 3 * p4 * r ** 4 + p5 * r ** 5
+    return size / np.sum(poly) * poly
+
+
 def fit_seed(corrected_counts, x, method):
     seeds, bounds = None, None
     size = np.sum(corrected_counts)
@@ -174,5 +203,48 @@ def fit_seed(corrected_counts, x, method):
             'width': (w / len(x), 2 * w),
             'x_gradient': (-w, w),
             'y_gradient': (-w, w)
+        }
+    if method == 'fit_ring_bi_gaussian':
+        seeds = {
+            'size': size,
+            'r_cm': 0,
+            'width': w / 2
+        }
+        bounds = {
+            'size': (0, 10 * size),
+            'r_cm': (-w, w),
+            'width': (w / len(x), 2 * w)
+        }
+    if method == 'fit_bi_gaussian':
+        seeds = {
+            'size': size,
+            'ratio': 1,
+            'width': w / 2,
+            'width2': w / 2
+        }
+        bounds = {
+            'size': (0, 10 * size),
+            'ratio': (0.01, 1),
+            'width': (w / len(x), 2 * w),
+            'width2': (w / len(x), 2 * w)
+        }
+    if method == 'fit_radial_poly':
+        seeds = {
+            'size': size,
+            'p0': 1,
+            'p1': 0,
+            'p2': 0,
+            'p3': 0,
+            'p4': 0,
+            'p5': 0
+        }
+        bounds = {
+            'size': (0, 10 * size),
+            'p0': (0, 2),
+            'p1': (-5*w, 5*w),
+            'p2': (-5*w, 5*w),
+            'p3': (-5*w, 5*w),
+            'p4': (-5*w, 5*w),
+            'p5': (-5*w, 5*w)
         }
     return seeds, bounds
