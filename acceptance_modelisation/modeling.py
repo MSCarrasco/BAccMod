@@ -144,18 +144,67 @@ def bi_gaussian(x, y, size, ratio, width, width2, **kwargs):
     gauss2d = size / np.sum(gauss2d) * gauss2d
     return gauss2d
 
+def bilin_bi_gaussian(x, y, size, ratio, width, width2, x_gradient, y_gradient, **kwargs):
+    gauss2d = (1 + x * x_gradient) * (1 + y * y_gradient) * bi_gaussian(x, y, size, ratio, width, width2)
+    gauss2d = size / np.sum(gauss2d) * gauss2d
+    return gauss2d
 
 def radial_poly(x, y, size, p0, p1, p2, p3, p4, p5):
     r = np.sqrt(x ** 2 + y ** 2)
     poly = p0 + p1 * r + p2 * r ** 2 + p3 * r ** 3 * p4 * r ** 4 + p5 * r ** 5
     return size / np.sum(poly) * poly
 
+def cauchy(x, y, size, a):
+    r2 = x ** 2 + y ** 2
+    ca = 1/(r2 + a**2)
+    return size / np.sum(ca) * ca
+
+def bicauchy(x, y, size, a, r0):
+    r = np.sqrt(x ** 2 + y ** 2)
+    ca = 1/((r-r0)**2 + a**2) + 1/((-r-r0)**2 + a**2)
+    return size / np.sum(ca) * ca
+
+def mod_tanh(x, y, size, speed, r0):
+    r = np.sqrt(x ** 2 + y ** 2)
+    th = np.tanh(r0-r*speed) + 1
+    return size / np.sum(th) * th
 
 def fit_seed(corrected_counts, x, method):
     seeds, bounds = None, None
     size = np.sum(corrected_counts)
     w = max(x)
-    if method == 'fit_gaussian':
+    if method == 'tanh':
+        seeds = {
+            'size': size,
+            'speed': 1,
+            'r0': 2
+        }
+        bounds = {
+            'size': (0, 10 * size),
+            'speed': (0.1 * w, 5 * w),
+            'r0': (0.1 * w, 5 * w)
+        }
+    if method == 'cauchy':
+        seeds = {
+            'size': size,
+            'a': 1,
+        }
+        bounds = {
+            'size': (0, 10 * size),
+            'a': (0.1 * w, 5 * w)
+        }
+    if method == 'bicauchy':
+        seeds = {
+            'size': size,
+            'a': 1,
+            'r0':2
+        }
+        bounds = {
+            'size': (0, 10 * size),
+            'a': (0.1 * w, 5 * w),
+            'r0': (0.1 * w, 5 * w)
+        }
+    if method == 'gaussian':
         seeds = {
             'size': size,
             'x_cm': 0,
@@ -172,7 +221,7 @@ def fit_seed(corrected_counts, x, method):
             'length': (w / len(x), 2 * w),
             'psi': (0, 2 * np.pi)
         }
-    if method == 'fit_xlin_gaussian':
+    if method == 'xlin_gaussian':
         seeds = {
             'size': size,
             'x_cm': 0,
@@ -187,7 +236,7 @@ def fit_seed(corrected_counts, x, method):
             'width': (w / len(x), 2 * w),
             'y_gradient': (-w, w)
         }
-    if method == 'fit_bilin_gaussian':
+    if method == 'bilin_gaussian':
         seeds = {
             'size': size,
             'x_cm': 0,
@@ -204,7 +253,7 @@ def fit_seed(corrected_counts, x, method):
             'x_gradient': (-w, w),
             'y_gradient': (-w, w)
         }
-    if method == 'fit_ring_bi_gaussian':
+    if method == 'ring_bi_gaussian':
         seeds = {
             'size': size,
             'r_cm': 0,
@@ -215,20 +264,37 @@ def fit_seed(corrected_counts, x, method):
             'r_cm': (-w, w),
             'width': (w / len(x), 2 * w)
         }
-    if method == 'fit_bi_gaussian':
+    if method == 'bi_gaussian':
         seeds = {
             'size': size,
             'ratio': 1,
             'width': w / 2,
-            'width2': w / 2
+            'width2': w
         }
         bounds = {
             'size': (0, 10 * size),
-            'ratio': (0.01, 1),
+            'ratio': (0.01, 10),
             'width': (w / len(x), 2 * w),
             'width2': (w / len(x), 2 * w)
         }
-    if method == 'fit_radial_poly':
+    if method == 'bilin_bi_gaussian':
+        seeds = {
+            'size': size,
+            'ratio': 1,
+            'width': w / 2,
+            'width2': w,
+            'x_gradient': 0,
+            'y_gradient': 0
+        }
+        bounds = {
+            'size': (0, 10 * size),
+            'ratio': (0.01, 10),
+            'width': (w / len(x), 2 * w),
+            'width2': (w / len(x), 2 * w),
+            'x_gradient': (-w, w),
+            'y_gradient': (-w, w)
+        }
+    if method == 'radial_poly':
         seeds = {
             'size': size,
             'p0': 1,

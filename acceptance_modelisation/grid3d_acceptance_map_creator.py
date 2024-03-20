@@ -13,12 +13,16 @@ from .modeling import *
 
 import matplotlib.pyplot as plt
 
-FIT_FUNCTION = {'fit_gaussian': gaussian2d,
-                'fit_ylin_gaussian': ylinear_1dgaussian,
-                'fit_bilin_gaussian': bilinear_1dgaussian,
-                'fit_ring_bi_gaussian': ring_bi_gaussian,
-                'fit_bi_gaussian': bi_gaussian,
-                'fit_radial_poly': radial_poly}
+FIT_FUNCTION = {'gaussian2d': gaussian2d,
+                'ylin_gaussian': ylinear_1dgaussian,
+                'bilin_gaussian': bilinear_1dgaussian,
+                'ring_bi_gaussian': ring_bi_gaussian,
+                'bi_gaussian': bi_gaussian,
+                'radial_poly': radial_poly,
+                'cauchy': cauchy,
+                'bicauchy': bicauchy,
+                'bilin_bi_gaussian': bilin_bi_gaussian,
+                'tanh': mod_tanh}
 
 
 class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
@@ -39,7 +43,10 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
                  fix_center: bool = True,
                  minuit_print_level: int = 0,
                  check_model: 'str' = 'nothing',
-                 verbose: bool = False) -> None:
+                 verbose: bool = False,
+                 fit_fnc='gaussian2d',
+                 fit_seeds=None,
+                 fit_bounds=None) -> None:
         """
         Create the class for calculating 3D grid acceptance model
 
@@ -102,6 +109,9 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
         self.fix_center = fix_center
         self.minuit_print_level = minuit_print_level
         self.check_model = check_model
+        self.fit_fnc = fit_fnc
+        self.fit_seeds = fit_seeds
+        self.fit_bounds = fit_bounds
 
         # Initiate upper instance
         super().__init__(energy_axis, max_offset, spatial_resolution, exclude_regions,
@@ -110,10 +120,20 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
                          time_resolution_rotation_fov, verbose)
 
     def fit_background(self, count_map, exp_map_total, exp_map):
-        fnc = FIT_FUNCTION[self.method]
         centers = self.offset_axis.center.to_value(u.deg)
         centers = np.concatenate((-np.flip(centers), centers), axis=None)
-        seeds, bounds = fit_seed(count_map * exp_map_total / exp_map, centers, self.method)
+        seeds = {}
+        bounds = {}
+        if type(self.fit_fnc) == str:
+            fnc = FIT_FUNCTION[self.fit_fnc]
+            seeds, bounds = fit_seed(count_map * exp_map_total / exp_map, centers, self.fit_fnc)
+        else:
+            fnc = self.fit_fnc
+        seeds = seeds if self.fit_seeds is None else self.fit_seeds
+        seeds['size'] = np.sum(count_map * exp_map_total / exp_map)
+        bounds = bounds if self.fit_bounds is None else self.fit_bounds
+        bounds['size'] = (seeds['size']*0.1, seeds['size']*10)
+
         x, y = np.meshgrid(centers, centers)
 
         log_factorial_count_map = log_factorial(count_map)
@@ -137,8 +157,10 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
         m.simplex().migrad()
         if self.check_model != 'nothing':
             residuals = count_map - fnc(x, y, **m.values.to_dict()) * exp_map / exp_map_total
-            print("Fit results : ", m.values.to_dict())
+            print(f"Fit results ({m.fcn}) : ", m.values.to_dict())
             print(f"Average residuals : {np.sum(residuals)}, std = {np.std(residuals)}")
+            print(f"Average relative residuals : {np.sum(residuals/fnc(x, y, **m.values.to_dict()))},"
+                  f" std = {np.std(residuals/fnc(x, y, **m.values.to_dict()))}")
 
         if self.check_model == 'plot':
             fig, ax = plt.subplots(1, 3, sharey='all', figsize=(16, 4))
@@ -146,8 +168,8 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
             ax[0].set_title("Counts")
             fig.colorbar(ax[1].imshow(fnc(x, y, **m.values.to_dict())))
             ax[1].set_title("Model")
-            fig.colorbar(ax[2].imshow(residuals))
-            ax[2].set_title("Residual Counts-Model\n(Exposure corrected)")
+            fig.colorbar(ax[2].imshow(residuals/fnc(x, y, **m.values.to_dict())))
+            ax[2].set_title("Residual Counts-Model\n(relative, Exposure corrected)")
             plt.show()
         return fnc(x, y, **m.values.to_dict())
 
@@ -188,7 +210,7 @@ class Grid3DAcceptanceMapCreator(BaseAcceptanceMapCreator):
         if self.method == 'stack':
             corrected_counts = count_map_background_downsample.data * (exp_map_background_total_downsample.data /
                                                                        exp_map_background_downsample.data)
-        else:
+        elif self.method == 'fit':
             corrected_counts = np.empty(count_map_background_downsample.data.shape)
             for e in range(count_map_background_downsample.data.shape[0]):
                 if self.check_model != 'nothing':
