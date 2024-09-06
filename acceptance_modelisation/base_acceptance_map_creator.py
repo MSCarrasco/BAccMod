@@ -169,8 +169,8 @@ class BaseAcceptanceMapCreator(ABC):
 
         # Formatting data for the output
         camera_frame_events = obs.events.copy()
-        camera_frame_events.table['RA'] = events_camera_frame.lon
-        camera_frame_events.table['DEC'] = events_camera_frame.lat
+        camera_frame_events.table['RA'] = - events_camera_frame.lat
+        camera_frame_events.table['DEC'] = - events_camera_frame.lon
         camera_frame_obs_info = copy.deepcopy(obs.obs_info)
         camera_frame_obs_info['RA_PNT'] = 0.
         camera_frame_obs_info['DEC_PNT'] = 0.
