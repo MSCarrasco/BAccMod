@@ -169,8 +169,8 @@ class BaseAcceptanceMapCreator(ABC):
 
         # Formatting data for the output
         camera_frame_events = obs.events.copy()
-        camera_frame_events.table['RA'] = events_camera_frame.lon
-        camera_frame_events.table['DEC'] = events_camera_frame.lat
+        camera_frame_events.table['RA'] = - events_camera_frame.lat
+        camera_frame_events.table['DEC'] = - events_camera_frame.lon
         camera_frame_obs_info = copy.deepcopy(obs.obs_info)
         camera_frame_obs_info['RA_PNT'] = 0.
         camera_frame_obs_info['DEC_PNT'] = 0.
@@ -211,8 +211,8 @@ class BaseAcceptanceMapCreator(ABC):
                 center_coordinate = region.center
                 center_coordinate_altaz = center_coordinate.transform_to(pointing_altaz)
                 center_coordinate_camera_frame = center_coordinate_altaz.transform_to(camera_frame)
-                center_coordinate_camera_frame_arb = SkyCoord(ra=center_coordinate_camera_frame.lon[0],
-                                                              dec=center_coordinate_camera_frame.lat[0])
+                center_coordinate_camera_frame_arb = SkyCoord(ra= - center_coordinate_camera_frame.lat[0],
+                                                              dec= - center_coordinate_camera_frame.lon[0])
                 exclude_region_camera_frame.append(CircleSkyRegion(center=center_coordinate_camera_frame_arb,
                                                                    radius=region.radius))
             elif isinstance(region, EllipseSkyRegion):
