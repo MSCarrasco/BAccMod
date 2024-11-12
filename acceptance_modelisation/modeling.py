@@ -79,7 +79,13 @@ def bilinear_gaussian2d(x, y, size, x_cm, y_cm, width, length, psi, x_gradient, 
     x_gradient: float
     y_gradient: float
     """
-    return (1 + x * x_gradient) * (1 + y * y_gradient) * gaussian2d(x, y, size, x_cm, y_cm, width, length, psi)
+    x_grad_factor = (x * x_gradient)
+    if (x_grad_factor < -1).any(): x_grad_factor[np.where(x_grad_factor < -1)] = -1
+
+    y_grad_factor = (y * y_gradient)
+    if (y_grad_factor < -1).any(): y_grad_factor[np.where(y_grad_factor < -1)] = -1
+
+    return (1 + x_grad_factor) * (1 + y_grad_factor) * gaussian2d(x, y, size, x_cm, y_cm, width, length, psi)
 
 
 bilinear_gaussian2d.default_seeds = {'x_cm': 0, 'y_cm': 0, 'width': 1, 'length': 1, 'psi': 0, 'x_gradient': 0,
