@@ -16,7 +16,6 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     install_requires=[
-        'gammapy>=1.1,<1.4',
         'numpy',
         'scipy',
         'astropy>=4.0',
